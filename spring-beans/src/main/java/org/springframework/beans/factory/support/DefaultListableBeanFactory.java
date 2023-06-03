@@ -872,13 +872,18 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 		// Trigger initialization of all non-lazy singleton beans...
 		for (String beanName : beanNames) {
+			// 合并beanDefinition
 			RootBeanDefinition bd = getMergedLocalBeanDefinition(beanName);
+			// 判断这个bean不是抽象的（这里的抽象不是指抽象类，是bean的属性），且是单例，不是懒加载的，
 			if (!bd.isAbstract() && bd.isSingleton() && !bd.isLazyInit()) {
+				// 如果是factoryBean
 				if (isFactoryBean(beanName)) {
+					// 则去将他的beanName加上一个前缀，然后用这个新名字去创建
 					Object bean = getBean(FACTORY_BEAN_PREFIX + beanName);
 					if (bean instanceof FactoryBean) {
 						FactoryBean<?> factory = (FactoryBean<?>) bean;
 						boolean isEagerInit;
+						// 如果这个bean不关是一个factoryBean且是一个实现了SmartFactoryBean的factoryBean
 						if (System.getSecurityManager() != null && factory instanceof SmartFactoryBean) {
 							isEagerInit = AccessController.doPrivileged(
 									(PrivilegedAction<Boolean>) ((SmartFactoryBean<?>) factory)::isEagerInit,
@@ -888,21 +893,27 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 							isEagerInit = (factory instanceof SmartFactoryBean &&
 									((SmartFactoryBean<?>) factory).isEagerInit());
 						}
+						// 如果SmartFactoryBean中的isEagerInit()返回的是个true，则立即创建factoryBean中的getObject()中返回的那个bean
 						if (isEagerInit) {
 							getBean(beanName);
 						}
 					}
 				}
 				else {
+					// 不是factoryBean则直接开始创建bean
 					getBean(beanName);
 				}
 			}
 		}
 
 		// Trigger post-initialization callback for all applicable beans...
+		// 循环遍历所有的bean名称
 		for (String beanName : beanNames) {
+			// 然后去单例池中拿到这个bean，获取的object就已经是一个单例bean
 			Object singletonInstance = getSingleton(beanName);
+			// 看这个bean是否实现了SmartInitializingSingleton接口
 			if (singletonInstance instanceof SmartInitializingSingleton) {
+				// 如果实现了这个接口，则去调用SmartInitializingSingleton中的afterSingletonsInstantiated()方法
 				SmartInitializingSingleton smartSingleton = (SmartInitializingSingleton) singletonInstance;
 				if (System.getSecurityManager() != null) {
 					AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
