@@ -282,7 +282,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			String name, @Nullable Class<T> requiredType, @Nullable Object[] args, boolean typeCheckOnly)
 			throws BeansException {
 
-		// c处理bean的名称，就是表示如果一个bean取了别名，我们可以通过别名拿到bean的普通名称
+		// 处理bean的名称，就是表示如果一个bean取了别名，我们可以通过别名拿到bean的普通名称
 		String beanName = transformedBeanName(name);
 		Object bean;
 
@@ -351,7 +351,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 							throw new BeanCreationException(mbd.getResourceDescription(), beanName,
 									"Circular depends-on relationship between '" + beanName + "' and '" + dep + "'");
 						}
-						// 将这个依赖的bean放入
+						// 将这个依赖的bean放入dependentBeanMap中
 						registerDependentBean(dep, beanName);
 						try {
 							getBean(dep);

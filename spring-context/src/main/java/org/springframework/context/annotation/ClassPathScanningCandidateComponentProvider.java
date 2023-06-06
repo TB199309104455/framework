@@ -308,7 +308,7 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	 * @return a corresponding Set of autodetected bean definitions
 	 */
 	public Set<BeanDefinition> findCandidateComponents(String basePackage) {
-		// 根据索引去扫描，在META-INF 目录下面有一个文件在里面指定你的那些类是bean
+		// 根据索引去扫描，在META-INF 目录下面有一个文件spring.components在里面指定你的那些类是bean
 		if (this.componentsIndex != null && indexSupportsIncludeFilters()) {
 			return addCandidateComponentsFromIndex(this.componentsIndex, basePackage);
 		}
@@ -541,7 +541,7 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	 */
 	protected boolean isCandidateComponent(AnnotatedBeanDefinition beanDefinition) {
 		AnnotationMetadata metadata = beanDefinition.getMetadata();
-		// 判断这个bean是不是包含@Dependent注解，是不是一个接口，是不是一个抽象类，是不是加了@Lookup注解
+		// 判断这个bean是不是顶级类或者是内部类，是不是一个接口或者抽象类，如果是一个抽象类类里面是不是有一个加了@Lookup注解的方法，如果都符合条件才是一个bean
 		return (metadata.isIndependent() && (metadata.isConcrete() ||
 				(metadata.isAbstract() && metadata.hasAnnotatedMethods(Lookup.class.getName()))));
 	}

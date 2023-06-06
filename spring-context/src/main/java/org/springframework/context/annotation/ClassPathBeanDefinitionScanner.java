@@ -287,15 +287,18 @@ public class ClassPathBeanDefinitionScanner extends ClassPathScanningCandidateCo
 				if (candidate instanceof AbstractBeanDefinition) {
 					postProcessBeanDefinition((AbstractBeanDefinition) candidate, beanName);
 				}
+				// 是不是spring相关注解的beanDefinition，如果是就需要去看一下这个bean上面是否有@Lazy，@Primary，@DependsOn，@Role，@Description等注解，
+				// 就是在beanDefinition设置这些属性的值
 				if (candidate instanceof AnnotatedBeanDefinition) {
 					AnnotationConfigUtils.processCommonDefinitionAnnotations((AnnotatedBeanDefinition) candidate);
 				}
 				// 此处再次校验这个bean是不是重名了
 				if (checkCandidate(beanName, candidate)) {
-					// 不是重名的bean则往集合中添加这个beanDefinition
+
 					BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(candidate, beanName);
 					definitionHolder =
 							AnnotationConfigUtils.applyScopedProxyMode(scopeMetadata, definitionHolder, this.registry);
+					// 不是重名的bean则往集合中添加这个beanDefinition
 					beanDefinitions.add(definitionHolder);
 					registerBeanDefinition(definitionHolder, this.registry);
 				}
