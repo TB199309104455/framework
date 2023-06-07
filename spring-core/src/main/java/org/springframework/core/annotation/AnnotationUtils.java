@@ -129,6 +129,7 @@ public abstract class AnnotationUtils {
 	 * @see #isCandidateClass(Class, String)
 	 */
 	public static boolean isCandidateClass(Class<?> clazz, Collection<Class<? extends Annotation>> annotationTypes) {
+		// 遍历，一个一个去匹配，如果这个注解所在的类名是以java.开头的，那么就不是注入点就直接返回
 		for (Class<? extends Annotation> annotationType : annotationTypes) {
 			if (isCandidateClass(clazz, annotationType)) {
 				return true;
