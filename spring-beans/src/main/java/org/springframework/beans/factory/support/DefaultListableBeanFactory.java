@@ -1242,6 +1242,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 					descriptor, requestingBeanName);
 			// 返回的result是个空，所以字段上面，或者说方法的参数前面没有加@Lazy注解
 			if (result == null) {
+				// 处理普通的那种自动注入
 				result = doResolveDependency(descriptor, requestingBeanName, autowiredBeanNames, typeConverter);
 			}
 			return result;
@@ -1252,7 +1253,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	public Object doResolveDependency(DependencyDescriptor descriptor, @Nullable String beanName,
 			@Nullable Set<String> autowiredBeanNames, @Nullable TypeConverter typeConverter) throws BeansException {
 
-		//线程上设置当前注入点
+		//设置了一下当前正在解析的注入参数，通过当前线程进行保存
 		InjectionPoint previousInjectionPoint = ConstructorResolver.setCurrentInjectionPoint(descriptor);
 		try {
 			//  依赖注入的缓存，有缓存直接返回
@@ -1262,7 +1263,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			if (shortcut != null) {
 				return shortcut;
 			}
-
+			// 获取自动注入的类型
 			Class<?> type = descriptor.getDependencyType();
 			// 此处是处理@Value注解
 			Object value = getAutowireCandidateResolver().getSuggestedValue(descriptor);
@@ -1284,15 +1285,17 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 							converter.convertIfNecessary(value, type, descriptor.getMethodParameter()));
 				}
 			}
-
+			//解析依赖的是否是map、list、数组等
 			Object multipleBeans = resolveMultipleBeans(descriptor, beanName, autowiredBeanNames, typeConverter);
 			if (multipleBeans != null) {
 				return multipleBeans;
 			}
 
 			Map<String, Object> matchingBeans = findAutowireCandidates(beanName, type, descriptor);
+			//如果依赖都没有找找到，先判断是否是 required=true
 			if (matchingBeans.isEmpty()) {
 				if (isRequired(descriptor)) {
+					//抛出bean依赖没有找到的问题
 					raiseNoMatchingBeanFound(type, descriptor.getResolvableType(), descriptor);
 				}
 				return null;
@@ -1302,6 +1305,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			Object instanceCandidate;
 
 			if (matchingBeans.size() > 1) {
+				// 如果通过类型等方式找到了多个bean，则通过下面这个方法获取唯一的bean
 				autowiredBeanName = determineAutowireCandidate(matchingBeans, descriptor);
 				if (autowiredBeanName == null) {
 					if (isRequired(descriptor) || !indicatesMultipleBeans(type)) {
@@ -1327,9 +1331,11 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 				autowiredBeanNames.add(autowiredBeanName);
 			}
 			if (instanceCandidate instanceof Class) {
+				// 如果候选者实例是 Class 类型， 则调用 beanFactory.getBean(beanName);
 				instanceCandidate = descriptor.resolveCandidate(autowiredBeanName, type, this);
 			}
 			Object result = instanceCandidate;
+			// 看看这个对象是不是nullBean 如果是，再看看 required这个值是不是等于true，如果是则抛出找不到注入bean的异常
 			if (result instanceof NullBean) {
 				if (isRequired(descriptor)) {
 					raiseNoMatchingBeanFound(type, descriptor.getResolvableType(), descriptor);

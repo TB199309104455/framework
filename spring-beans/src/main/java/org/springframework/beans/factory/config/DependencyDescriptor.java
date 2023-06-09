@@ -54,30 +54,39 @@ public class DependencyDescriptor extends InjectionPoint implements Serializable
 
 	private final Class<?> declaringClass;
 
-	@Nullable
+	// 方法名称 方法注入
+	@Nullable // 该注解允许该参数为空
 	private String methodName;
 
 	@Nullable
+	// 参数类型集合 构造器注入
 	private Class<?>[] parameterTypes;
 
+	// 参数位置
 	private int parameterIndex;
 
 	@Nullable
+	// 字段名称 字段注入
 	private String fieldName;
 
+	// 是否是必须的，通常这个值为true
 	private final boolean required;
 
+	// 是直接加载还是懒加载，对应的为@Lazy注解，如果@lazy注解为true，该值为false
 	private final boolean eager;
 
+	// 嵌套层次
 	private int nestingLevel = 1;
 
 	@Nullable
+	// 包含了那些类
 	private Class<?> containingClass;
 
 	@Nullable
 	private transient volatile ResolvableType resolvableType;
 
 	@Nullable
+	// 类型描述 主要是类型描述的内容
 	private transient volatile TypeDescriptor typeDescriptor;
 
 

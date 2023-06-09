@@ -677,6 +677,8 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 		private Object resolveFieldValue(Field field, Object bean, @Nullable String beanName) {
 
 			// 专门用于注入的包装类，包装构造函数参数，方法参数或字段
+			// DependencyDescriptor是依赖的描述该类中描述了注入对象的信息注入类型有三种：方法注入、字段注入、构造器注入，
+			// 允许其中只采用其中一种注入，但不能三种同时为空。三种注入的字段上面添加了 @Nullable 注解表明可以该字段为空，但实际上，三种注入方法必须采用其中一种，即不能同时为空。
 			DependencyDescriptor desc = new DependencyDescriptor(field, this.required);
 			// 设置class
 			desc.setContainingClass(bean.getClass());
