@@ -258,6 +258,10 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 	public Constructor<?>[] determineCandidateConstructors(Class<?> beanClass, final String beanName)
 			throws BeanCreationException {
 
+		// @Lookup标识的属性每次调用都会被重新初始化，
+		// 有些场景下原型类型的Bean就需要这样做，否则每个Bean只会在spring容器初始化的时候创建一次，
+		// 但是如果在一个单例的Bean中注入了一个原型的Bean，这样的话原本原型的Bean就相当于变成了一个单例的Bean失去了原有的意义，
+		// 这时就需要@Lookup来解决，或者是每次都从新从spring容器中通过getBean来获取Bean
 		// Let's check for lookup methods here...
 		if (!this.lookupMethodsChecked.contains(beanName)) {
 			if (AnnotationUtils.isCandidateClass(beanClass, Lookup.class)) {
@@ -292,6 +296,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 			this.lookupMethodsChecked.add(beanName);
 		}
 
+		// 一般只有原型的bean才会创建多次
 		// Quick check on the concurrent map first, with minimal locking.
 		Constructor<?>[] candidateConstructors = this.candidateConstructorsCache.get(beanClass);
 		if (candidateConstructors == null) {
@@ -301,6 +306,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 				if (candidateConstructors == null) {
 					Constructor<?>[] rawCandidates;
 					try {
+						// 获取所有构造方法
 						rawCandidates = beanClass.getDeclaredConstructors();
 					}
 					catch (Throwable ex) {
@@ -308,11 +314,17 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 								"Resolution of declared constructors on bean Class [" + beanClass.getName() +
 								"] from ClassLoader [" + beanClass.getClassLoader() + "] failed", ex);
 					}
+					// 定义要选举的构造方法集合
 					List<Constructor<?>> candidates = new ArrayList<>(rawCandidates.length);
+					// 加了@AutoWire()并且是require=true的构造方法
 					Constructor<?> requiredConstructor = null;
+					// 默认构造发给方法
 					Constructor<?> defaultConstructor = null;
+					// 返回与 Kotlin 主构造函数相对应的 Java 构造函数, 否则，特别是对于非 Kotlin 类，这只会返回 {@code null}。
 					Constructor<?> primaryConstructor = BeanUtils.findPrimaryConstructor(beanClass);
+					// 记录合成的构造方法数量，理解为可用的构造方法个数吧
 					int nonSyntheticConstructors = 0;
+					// 遍历所有的构造方法
 					for (Constructor<?> candidate : rawCandidates) {
 						if (!candidate.isSynthetic()) {
 							nonSyntheticConstructors++;
@@ -320,11 +332,13 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 						else if (primaryConstructor != null) {
 							continue;
 						}
+						// 拿到所有加了@Autowired的构造方法
 						MergedAnnotation<?> ann = findAutowiredAnnotation(candidate);
 						if (ann == null) {
 							Class<?> userClass = ClassUtils.getUserClass(beanClass);
 							if (userClass != beanClass) {
 								try {
+									// 在父类中找@Autowired的构造方法
 									Constructor<?> superCtor =
 											userClass.getDeclaredConstructor(candidate.getParameterTypes());
 									ann = findAutowiredAnnotation(superCtor);
@@ -335,6 +349,8 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 							}
 						}
 						if (ann != null) {
+							// 如果找到加了@Autowired注解的构造方法，再判断required属性
+							// 加了@AutoWire()并且是require=true的构造方法
 							if (requiredConstructor != null) {
 								throw new BeanCreationException(beanName,
 										"Invalid autowire-marked constructor: " + candidate +
@@ -353,14 +369,18 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 							}
 							candidates.add(candidate);
 						}
+						// 否则如果构造函数参数个数为0，把它赋值给变量defaultConstructor
 						else if (candidate.getParameterCount() == 0) {
 							defaultConstructor = candidate;
 						}
 					}
+					// 处理上面遍历后的结果
 					if (!candidates.isEmpty()) {
 						// Add default constructor to list of optional constructors, as fallback.
 						if (requiredConstructor == null) {
+							// 如果加了@Autowired、并且没有指定required为true、并且存在默认的构造方法
 							if (defaultConstructor != null) {
+								// 把默认构造方法加到待筛选的集合中
 								candidates.add(defaultConstructor);
 							}
 							else if (candidates.size() == 1 && logger.isInfoEnabled()) {
@@ -372,6 +392,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 						}
 						candidateConstructors = candidates.toArray(new Constructor<?>[0]);
 					}
+					// 如果只有一个构造方法，并且构造数的参数大于0
 					else if (rawCandidates.length == 1 && rawCandidates[0].getParameterCount() > 0) {
 						candidateConstructors = new Constructor<?>[] {rawCandidates[0]};
 					}
@@ -385,6 +406,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 					else {
 						candidateConstructors = new Constructor<?>[0];
 					}
+					// 把推断的构造方法数组放到缓存map中
 					this.candidateConstructorsCache.put(beanClass, candidateConstructors);
 				}
 			}
