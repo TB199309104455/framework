@@ -1499,35 +1499,51 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	protected Map<String, Object> findAutowireCandidates(
 			@Nullable String beanName, Class<?> requiredType, DependencyDescriptor descriptor) {
 
+		// 从BeanFactory中找出和requiredType所匹配的beanName，仅仅是beanName，这些bean不一定经过了实例化，只有到最终确定某个Bean了，如果这个Bean还没有实例化才会真正进行实例化
 		String[] candidateNames = BeanFactoryUtils.beanNamesForTypeIncludingAncestors(
 				this, requiredType, true, descriptor.isEager());
 		Map<String, Object> result = new LinkedHashMap<>(candidateNames.length);
+		// 根据类型从resolvableDependencies中匹配Bean，resolvableDependencies中存放的是类型：Bean对象，比如BeanFactory.class:BeanFactory对象，在Spring启动时设置。
 		for (Map.Entry<Class<?>, Object> classObjectEntry : this.resolvableDependencies.entrySet()) {
+			// 得到当前Bean的类型
 			Class<?> autowiringType = classObjectEntry.getKey();
+
 			if (autowiringType.isAssignableFrom(requiredType)) {
+				// 获取缓存中的值
 				Object autowiringValue = classObjectEntry.getValue();
+				// 这里会生成一个Bean的名字，放到缓存中的是没有Bean的名字的
 				autowiringValue = AutowireUtils.resolveAutowiringValue(autowiringValue, requiredType);
 				if (requiredType.isInstance(autowiringValue)) {
+					// 类型匹配，将当前值添加进去
 					result.put(ObjectUtils.identityToString(autowiringValue), autowiringValue);
 					break;
 				}
 			}
 		}
+		// 这里理解就是注入同一个Bean的时候，先考虑同类型的其他Bean
 		for (String candidate : candidateNames) {
+			// 如果不是自己，则判断该candidate到底能不能用来进行自动注入（@Bean（autowireCandidate = true））默认为true
 			if (!isSelfReference(beanName, candidate) && isAutowireCandidate(candidate, descriptor)) {
+				// 不是自己，并且可以注入的时候，调用这个代码：添加候选者
 				addCandidateEntry(result, candidate, descriptor, requiredType);
 			}
 		}
+		// 为空要么是真的没有匹配的，要么是匹配的自己
 		if (result.isEmpty()) {
+			// 需要匹配的类型是不是Map、数组之类的
 			boolean multiple = indicatesMultipleBeans(requiredType);
 			// Consider fallback matches if the first pass failed to find anything...
+			// 如果第一遍找不到任何东西，请考虑回退匹配。
 			DependencyDescriptor fallbackDescriptor = descriptor.forFallbackMatch();
+			// 遍历每个候选者
 			for (String candidate : candidateNames) {
+				// 不是自己并且可以被注入并且（不是Map、数组之类的或者@Qualifier指定了BeanName的）
 				if (!isSelfReference(beanName, candidate) && isAutowireCandidate(candidate, fallbackDescriptor) &&
 						(!multiple || getAutowireCandidateResolver().hasQualifier(descriptor))) {
 					addCandidateEntry(result, candidate, descriptor, requiredType);
 				}
 			}
+			// 匹配的是自己，把自己添加到result中。
 			if (result.isEmpty() && !multiple) {
 				// Consider self references as a final pass...
 				// but in the case of a dependency collection, not the very same bean itself.

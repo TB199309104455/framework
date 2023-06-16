@@ -318,7 +318,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 					List<Constructor<?>> candidates = new ArrayList<>(rawCandidates.length);
 					// 加了@AutoWire()并且是require=true的构造方法
 					Constructor<?> requiredConstructor = null;
-					// 默认构造发给方法
+					// 默认构造方法
 					Constructor<?> defaultConstructor = null;
 					// 返回与 Kotlin 主构造函数相对应的 Java 构造函数, 否则，特别是对于非 Kotlin 类，这只会返回 {@code null}。
 					Constructor<?> primaryConstructor = BeanUtils.findPrimaryConstructor(beanClass);
@@ -351,6 +351,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 						if (ann != null) {
 							// 如果找到加了@Autowired注解的构造方法，再判断required属性
 							// 加了@AutoWire()并且是require=true的构造方法
+							// 这里是指@Autowired加了required属性为true的且还有其他构造方法上面有autowired注解上指定了required属性值的（这里的指定不一定是true）的的则直接报错
 							if (requiredConstructor != null) {
 								throw new BeanCreationException(beanName,
 										"Invalid autowire-marked constructor: " + candidate +
@@ -367,6 +368,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 								}
 								requiredConstructor = candidate;
 							}
+							// 如果其中加了@Autowired注解且其中的required中的属性都是false则加入
 							candidates.add(candidate);
 						}
 						// 否则如果构造函数参数个数为0，把它赋值给变量defaultConstructor
@@ -465,7 +467,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 
 	private InjectionMetadata findAutowiringMetadata(String beanName, Class<?> clazz, @Nullable PropertyValues pvs) {
 		// Fall back to class name as cache key, for backwards compatibility with custom callers.
-		// 获取缓存的key值，如果传过来的不是空就用穿过来的，如果为空，就用类名
+		// 获取缓存的key值，如果传过来的不是空就用传过来的，如果为空，就用类名
 		String cacheKey = (StringUtils.hasLength(beanName) ? beanName : clazz.getName());
 		// Quick check on the concurrent map first, with minimal locking.
 		// 从缓存中获取metadata
@@ -490,13 +492,13 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 	}
 
 	private InjectionMetadata buildAutowiringMetadata(final Class<?> clazz) {
-		// 判断注解是不是@Autowired类型，具体的判断就是判断这个注解所在的类名是不是以java.开头的，如果不是，就是注入点否则不是
+		// 判断注解是不是@Autowired类型，具体的判断就是判断这个注解所在的类名是不是以java.开头的，如果不是，就是注入点，否则不是
 		if (!AnnotationUtils.isCandidateClass(clazz, this.autowiredAnnotationTypes)) {
 			return InjectionMetadata.EMPTY;
 		}
 
 		// 这里需要注意AutowiredFieldElement，AutowiredMethodElement均继承了InjectionMetadata.InjectedElement
-		// 因此这个列表是可以保存注解的属性和被注解的方法的
+		// 因此这个列表是可以保存被注解的属性和被注解的方法的
 		List<InjectionMetadata.InjectedElement> elements = new ArrayList<>();
 		Class<?> targetClass = clazz;
 
