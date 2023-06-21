@@ -101,11 +101,13 @@ public class EventListenerMethodProcessor
 	public void afterSingletonsInstantiated() {
 		ConfigurableListableBeanFactory beanFactory = this.beanFactory;
 		Assert.state(this.beanFactory != null, "No ConfigurableListableBeanFactory set");
+		// 从容器中找到所有bean的名称
 		String[] beanNames = beanFactory.getBeanNamesForType(Object.class);
 		for (String beanName : beanNames) {
 			if (!ScopedProxyUtils.isScopedTarget(beanName)) {
 				Class<?> type = null;
 				try {
+					// 防止是代理，吧真实的类型拿出来
 					type = AutoProxyUtils.determineTargetClass(beanFactory, beanName);
 				}
 				catch (Throwable ex) {
@@ -115,6 +117,7 @@ public class EventListenerMethodProcessor
 					}
 				}
 				if (type != null) {
+					// 对专门的作用域对象进行兼容~~~~（绝大部分都用不着）
 					if (ScopedObject.class.isAssignableFrom(type)) {
 						try {
 							Class<?> targetClass = AutoProxyUtils.determineTargetClass(
@@ -131,6 +134,7 @@ public class EventListenerMethodProcessor
 						}
 					}
 					try {
+						// 真正处理这个Bean里面的方法
 						processBean(beanName, type);
 					}
 					catch (Throwable ex) {
@@ -143,12 +147,14 @@ public class EventListenerMethodProcessor
 	}
 
 	private void processBean(final String beanName, final Class<?> targetType) {
+		//进来先判断，在nonAnnotatedClasses中没出现过，后面会往里注入值。并且类上或者方法上有EventListener注解
 		if (!this.nonAnnotatedClasses.contains(targetType) &&
 				AnnotationUtils.isCandidateClass(targetType, EventListener.class) &&
 				!isSpringContainerClass(targetType)) {
 
 			Map<Method, EventListener> annotatedMethods = null;
 			try {
+				// 获取注解的方法map，key就是我们写的两个方法，value就是EventListener和上面的参数信息
 				annotatedMethods = MethodIntrospector.selectMethods(targetType,
 						(MethodIntrospector.MetadataLookup<EventListener>) method ->
 								AnnotatedElementUtils.findMergedAnnotation(method, EventListener.class));
